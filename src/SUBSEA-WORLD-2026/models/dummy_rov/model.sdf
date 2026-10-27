@@ -1,0 +1,975 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+<model name="dummy_rov">
+  <static>false</static>
+
+  <!--
+    BODY FRAME: X = forward, Y = left, Z = up
+
+    FRAME ENVELOPE — 0.90 (L) x 0.70 (W) x 0.45 (H) m
+      Open work-class frame: orange pressure hull slung inside a black cage,
+      hi-vis yellow buoyancy blocks on top, skids underneath. Roughly 2x the
+      previous 0.50 x 0.40 x 0.18 box so it stays readable at 5-10 m through
+      the fog, with emissive markings and its own lights so it never gets lost
+      against the seabed.
+
+    BUOYANCY — collision geometry IS the displaced volume
+      Only the hull and the two float blocks are collision shapes; the open
+      frame members are visual-only, exactly as a real ROV displaces almost
+      nothing through its cage.
+
+        hull cylinder  r 0.12, l 0.60   -> pi*0.12^2*0.60 = 0.027143 m3
+        float blocks   0.58 x 0.13 x 0.06 x2 ->            0.009048 m3
+                                          total            0.036191 m3
+
+        Neutral mass  = 997 * 0.036191 = 36.08 kg
+        Actual mass   = 34.2 kg  ->  +18.5 N net upward
+
+      That +18.5 N is deliberately the same net buoyancy the 0.50 m box had
+      (+18.6 N at 34 kg), so the vehicle still trims and hovers identically
+      despite being twice the size. Change the mass if you change the hull or
+      float dimensions, or it will sink / balloon.
+
+    HORIZONTAL THRUSTERS (thruster_fl/fr/bl/br)
+      Mounted at frame corners, angled +/-45 deg in the XY plane.
+      Provide: surge (X), sway (Y), yaw (Rz).
+
+      Thrust axes in model frame:
+        FL (+x,+y corner):  (0.707, -0.707, 0)
+        FR (+x,-y corner):  (0.707, +0.707, 0)
+        BL (-x,+y corner):  (0.707, +0.707, 0)
+        BR (-x,-y corner):  (0.707, -0.707, 0)
+
+      Simple mixing (positive cmd = positive axis direction):
+        Surge  forward:  all four +1
+        Sway   left:     FR+, BL+, FL-, BR-
+        Yaw    CCW:      FR+, BR+, FL-, BL-
+
+    VERTICAL THRUSTERS (thruster_fl_top/fr_top/bl_top/br_top)
+      Mounted at frame corners, pointing straight up (0,0,1).
+      Provide: heave (Z), roll (Rx), pitch (Ry).
+
+        Heave  up:       all four +1
+        Roll   port up:  FL+, BL+, FR-, BR-
+        Pitch  nose up:  BL+, BR+, FL-, FR-
+
+    COMMAND TOPICS (Newtons, range -15 to +15):
+      /model/dummy_rov/joint/thruster_fl_joint/cmd_thrust
+      /model/dummy_rov/joint/thruster_fr_joint/cmd_thrust
+      /model/dummy_rov/joint/thruster_bl_joint/cmd_thrust
+      /model/dummy_rov/joint/thruster_br_joint/cmd_thrust
+      /model/dummy_rov/joint/thruster_fl_top_joint/cmd_thrust
+      /model/dummy_rov/joint/thruster_fr_top_joint/cmd_thrust
+      /model/dummy_rov/joint/thruster_bl_top_joint/cmd_thrust
+      /model/dummy_rov/joint/thruster_br_top_joint/cmd_thrust
+
+    PALETTE — tuned for contrast against a dark blue-green water column.
+      Everything the eye should track carries a little <emissive> so it still
+      reads when the ROV drifts outside the world lighting.
+        safety orange  hull
+        hi-vis yellow  float blocks, tether
+        near-black     frame cage, skids, thruster ducts
+        red / green    port / starboard nav markers
+        white          bow domes, strobe, headlights
+  -->
+
+  <!-- ============================================================
+       BASE LINK
+       ============================================================ -->
+  <link name="base_link">
+
+    <inertial>
+      <pose>0 0 0 0 0 0</pose>
+      <mass>34.2</mass>
+      <!-- Solid-box approximation over the 0.90 x 0.70 x 0.45 envelope -->
+      <inertia>
+        <ixx>1.974</ixx>   <!-- m/12*(y^2+z^2) = 34.2/12*(0.490+0.2025) -->
+        <iyy>2.886</iyy>   <!-- m/12*(x^2+z^2) = 34.2/12*(0.810+0.2025) -->
+        <izz>3.705</izz>   <!-- m/12*(x^2+y^2) = 34.2/12*(0.810+0.490)  -->
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+
+    <!-- ---------- Collision = displaced volume (see header) ---------- -->
+
+    <collision name="hull_collision">
+      <pose>0 0 0 0 1.5708 0</pose>
+      <geometry>
+        <cylinder><radius>0.12</radius><length>0.60</length></cylinder>
+      </geometry>
+    </collision>
+
+    <collision name="float_port_collision">
+      <pose>0 0.17 0.15 0 0 0</pose>
+      <geometry><box><size>0.58 0.13 0.06</size></box></geometry>
+    </collision>
+
+    <collision name="float_stbd_collision">
+      <pose>0 -0.17 0.15 0 0 0</pose>
+      <geometry><box><size>0.58 0.13 0.06</size></box></geometry>
+    </collision>
+
+    <!-- ---------- Pressure hull ---------- -->
+
+    <visual name="hull">
+      <pose>0 0 0 0 1.5708 0</pose>
+      <geometry>
+        <cylinder><radius>0.12</radius><length>0.56</length></cylinder>
+      </geometry>
+      <material>
+        <ambient>0.40 0.14 0.02 1</ambient>
+        <diffuse>1.00 0.42 0.05 1</diffuse>
+        <specular>0.45 0.35 0.30 1</specular>
+        <emissive>0.26 0.09 0.01 1</emissive>
+      </material>
+    </visual>
+
+    <!-- Clear acrylic dome at the bow -->
+    <visual name="hull_dome_fwd">
+      <pose>0.28 0 0 0 0 0</pose>
+      <geometry><sphere><radius>0.12</radius></sphere></geometry>
+      <material>
+        <ambient>0.30 0.33 0.36 1</ambient>
+        <diffuse>0.88 0.93 1.00 1</diffuse>
+        <specular>0.80 0.80 0.85 1</specular>
+        <emissive>0.10 0.12 0.14 1</emissive>
+      </material>
+    </visual>
+
+    <!-- Machined end cap at the stern -->
+    <visual name="hull_dome_aft">
+      <pose>-0.28 0 0 0 0 0</pose>
+      <geometry><sphere><radius>0.12</radius></sphere></geometry>
+      <material>
+        <ambient>0.07 0.08 0.09 1</ambient>
+        <diffuse>0.20 0.22 0.25 1</diffuse>
+        <specular>0.45 0.45 0.50 1</specular>
+      </material>
+    </visual>
+
+    <!-- ---------- Buoyancy blocks ---------- -->
+
+    <visual name="float_port">
+      <pose>0 0.17 0.15 0 0 0</pose>
+      <geometry><box><size>0.58 0.13 0.06</size></box></geometry>
+      <material>
+        <ambient>0.38 0.33 0.03 1</ambient>
+        <diffuse>1.00 0.88 0.10 1</diffuse>
+        <specular>0.40 0.38 0.25 1</specular>
+        <emissive>0.24 0.21 0.02 1</emissive>
+      </material>
+    </visual>
+
+    <visual name="float_stbd">
+      <pose>0 -0.17 0.15 0 0 0</pose>
+      <geometry><box><size>0.58 0.13 0.06</size></box></geometry>
+      <material>
+        <ambient>0.38 0.33 0.03 1</ambient>
+        <diffuse>1.00 0.88 0.10 1</diffuse>
+        <specular>0.40 0.38 0.25 1</specular>
+        <emissive>0.24 0.21 0.02 1</emissive>
+      </material>
+    </visual>
+
+    <!-- Dorsal identification panel — the ROV is usually viewed from above -->
+    <visual name="top_panel">
+      <pose>0 0 0.195 0 0 0</pose>
+      <geometry><box><size>0.46 0.30 0.02</size></box></geometry>
+      <material>
+        <ambient>0.45 0.16 0.02 1</ambient>
+        <diffuse>1.00 0.45 0.06 1</diffuse>
+        <specular>0.35 0.30 0.28 1</specular>
+        <emissive>0.34 0.12 0.01 1</emissive>
+      </material>
+    </visual>
+
+    <!-- ---------- Frame cage (visual only — no displaced volume) ---------- -->
+
+    <visual name="rail_top_port">
+      <pose>0 0.33 0.21 0 0 0</pose>
+      <geometry><box><size>0.90 0.03 0.03</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="rail_top_stbd">
+      <pose>0 -0.33 0.21 0 0 0</pose>
+      <geometry><box><size>0.90 0.03 0.03</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="rail_bot_port">
+      <pose>0 0.33 -0.19 0 0 0</pose>
+      <geometry><box><size>0.90 0.03 0.03</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="rail_bot_stbd">
+      <pose>0 -0.33 -0.19 0 0 0</pose>
+      <geometry><box><size>0.90 0.03 0.03</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="cross_fwd_top">
+      <pose>0.435 0 0.21 0 0 0</pose>
+      <geometry><box><size>0.03 0.69 0.03</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="cross_aft_top">
+      <pose>-0.435 0 0.21 0 0 0</pose>
+      <geometry><box><size>0.03 0.69 0.03</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="cross_fwd_bot">
+      <pose>0.435 0 -0.19 0 0 0</pose>
+      <geometry><box><size>0.03 0.69 0.03</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="cross_aft_bot">
+      <pose>-0.435 0 -0.19 0 0 0</pose>
+      <geometry><box><size>0.03 0.69 0.03</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="post_fwd_port">
+      <pose>0.435 0.33 0.01 0 0 0</pose>
+      <geometry><box><size>0.03 0.03 0.40</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="post_fwd_stbd">
+      <pose>0.435 -0.33 0.01 0 0 0</pose>
+      <geometry><box><size>0.03 0.03 0.40</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="post_aft_port">
+      <pose>-0.435 0.33 0.01 0 0 0</pose>
+      <geometry><box><size>0.03 0.03 0.40</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <visual name="post_aft_stbd">
+      <pose>-0.435 -0.33 0.01 0 0 0</pose>
+      <geometry><box><size>0.03 0.03 0.40</size></box></geometry>
+      <material>
+        <ambient>0.04 0.05 0.06 1</ambient>
+        <diffuse>0.09 0.10 0.12 1</diffuse>
+        <specular>0.25 0.26 0.30 1</specular>
+      </material>
+    </visual>
+
+    <!-- ---------- Landing skids ---------- -->
+
+    <visual name="skid_port">
+      <pose>0 0.26 -0.205 0 0 0</pose>
+      <geometry><box><size>0.72 0.05 0.035</size></box></geometry>
+      <material>
+        <ambient>0.07 0.08 0.09 1</ambient>
+        <diffuse>0.18 0.20 0.22 1</diffuse>
+        <specular>0.30 0.30 0.35 1</specular>
+      </material>
+    </visual>
+
+    <visual name="skid_stbd">
+      <pose>0 -0.26 -0.205 0 0 0</pose>
+      <geometry><box><size>0.72 0.05 0.035</size></box></geometry>
+      <material>
+        <ambient>0.07 0.08 0.09 1</ambient>
+        <diffuse>0.18 0.20 0.22 1</diffuse>
+        <specular>0.30 0.30 0.35 1</specular>
+      </material>
+    </visual>
+
+    <!-- ---------- Camera and bow lights ---------- -->
+
+    <visual name="camera_housing">
+      <pose>0.36 0 0.10 0 1.5708 0</pose>
+      <geometry><cylinder><radius>0.045</radius><length>0.08</length></cylinder></geometry>
+      <material>
+        <ambient>0.06 0.07 0.08 1</ambient>
+        <diffuse>0.16 0.18 0.20 1</diffuse>
+        <specular>0.40 0.40 0.45 1</specular>
+      </material>
+    </visual>
+
+    <visual name="camera_lens">
+      <pose>0.405 0 0.10 0 0 0</pose>
+      <geometry><sphere><radius>0.035</radius></sphere></geometry>
+      <material>
+        <ambient>0.02 0.03 0.04 1</ambient>
+        <diffuse>0.05 0.08 0.12 1</diffuse>
+        <specular>0.90 0.92 0.95 1</specular>
+      </material>
+    </visual>
+
+    <visual name="headlight_housing_port">
+      <pose>0.40 0.16 -0.02 0 1.5708 0</pose>
+      <geometry><cylinder><radius>0.040</radius><length>0.07</length></cylinder></geometry>
+      <material>
+        <ambient>0.06 0.07 0.08 1</ambient>
+        <diffuse>0.16 0.18 0.20 1</diffuse>
+        <specular>0.40 0.40 0.45 1</specular>
+      </material>
+    </visual>
+
+    <visual name="headlight_lens_port">
+      <pose>0.437 0.16 -0.02 0 1.5708 0</pose>
+      <geometry><cylinder><radius>0.036</radius><length>0.02</length></cylinder></geometry>
+      <material>
+        <ambient>0.60 0.60 0.55 1</ambient>
+        <diffuse>1.00 1.00 0.96 1</diffuse>
+        <emissive>1.00 0.98 0.85 1</emissive>
+      </material>
+    </visual>
+
+    <visual name="headlight_housing_stbd">
+      <pose>0.40 -0.16 -0.02 0 1.5708 0</pose>
+      <geometry><cylinder><radius>0.040</radius><length>0.07</length></cylinder></geometry>
+      <material>
+        <ambient>0.06 0.07 0.08 1</ambient>
+        <diffuse>0.16 0.18 0.20 1</diffuse>
+        <specular>0.40 0.40 0.45 1</specular>
+      </material>
+    </visual>
+
+    <visual name="headlight_lens_stbd">
+      <pose>0.437 -0.16 -0.02 0 1.5708 0</pose>
+      <geometry><cylinder><radius>0.036</radius><length>0.02</length></cylinder></geometry>
+      <material>
+        <ambient>0.60 0.60 0.55 1</ambient>
+        <diffuse>1.00 1.00 0.96 1</diffuse>
+        <emissive>1.00 0.98 0.85 1</emissive>
+      </material>
+    </visual>
+
+    <!-- ---------- Navigation markers ---------- -->
+
+    <visual name="nav_port">
+      <pose>0.40 0.33 0.14 0 0 0</pose>
+      <geometry><sphere><radius>0.035</radius></sphere></geometry>
+      <material>
+        <ambient>0.45 0.02 0.02 1</ambient>
+        <diffuse>1.00 0.06 0.06 1</diffuse>
+        <emissive>0.85 0.03 0.03 1</emissive>
+      </material>
+    </visual>
+
+    <visual name="nav_stbd">
+      <pose>0.40 -0.33 0.14 0 0 0</pose>
+      <geometry><sphere><radius>0.035</radius></sphere></geometry>
+      <material>
+        <ambient>0.02 0.40 0.10 1</ambient>
+        <diffuse>0.06 1.00 0.25 1</diffuse>
+        <emissive>0.03 0.75 0.12 1</emissive>
+      </material>
+    </visual>
+
+    <visual name="nav_stern">
+      <pose>-0.45 0 0.14 0 0 0</pose>
+      <geometry><sphere><radius>0.035</radius></sphere></geometry>
+      <material>
+        <ambient>0.40 0.40 0.38 1</ambient>
+        <diffuse>1.00 1.00 0.95 1</diffuse>
+        <emissive>0.80 0.80 0.75 1</emissive>
+      </material>
+    </visual>
+
+    <!-- Strobe on the mast — the thing you scan for when you lose the ROV -->
+    <visual name="beacon">
+      <pose>0 0 0.245 0 0 0</pose>
+      <geometry><sphere><radius>0.045</radius></sphere></geometry>
+      <material>
+        <ambient>0.60 0.58 0.50 1</ambient>
+        <diffuse>1.00 1.00 0.95 1</diffuse>
+        <emissive>0.95 0.92 0.75 1</emissive>
+      </material>
+    </visual>
+
+    <!-- ---------- Tether stub ---------- -->
+
+    <visual name="tether_stub">
+      <pose>-0.50 0 0.16 0 1.5708 0</pose>
+      <geometry><cylinder><radius>0.022</radius><length>0.14</length></cylinder></geometry>
+      <material>
+        <ambient>0.38 0.33 0.03 1</ambient>
+        <diffuse>1.00 0.85 0.10 1</diffuse>
+        <emissive>0.20 0.17 0.02 1</emissive>
+      </material>
+    </visual>
+
+    <!-- ---------- Vehicle lighting ----------
+         Attached to the link, so they travel with the ROV. Shadows are off:
+         with eight thrusters and a heightmap in frame, three shadow-casting
+         lights on a moving body costs far more than it shows.
+    -->
+
+    <light name="headlight_port" type="spot">
+      <pose>0.45 0.16 -0.02 0 0 0</pose>
+      <cast_shadows>false</cast_shadows>
+      <diffuse>0.95 0.97 0.90 1</diffuse>
+      <specular>0.40 0.40 0.38 1</specular>
+      <direction>1 0 -0.18</direction>
+      <spot>
+        <inner_angle>0.35</inner_angle>
+        <outer_angle>0.85</outer_angle>
+        <falloff>1.2</falloff>
+      </spot>
+      <attenuation>
+        <range>18</range>
+        <constant>0.3</constant>
+        <linear>0.08</linear>
+        <quadratic>0.006</quadratic>
+      </attenuation>
+    </light>
+
+    <light name="headlight_stbd" type="spot">
+      <pose>0.45 -0.16 -0.02 0 0 0</pose>
+      <cast_shadows>false</cast_shadows>
+      <diffuse>0.95 0.97 0.90 1</diffuse>
+      <specular>0.40 0.40 0.38 1</specular>
+      <direction>1 0 -0.18</direction>
+      <spot>
+        <inner_angle>0.35</inner_angle>
+        <outer_angle>0.85</outer_angle>
+        <falloff>1.2</falloff>
+      </spot>
+      <attenuation>
+        <range>18</range>
+        <constant>0.3</constant>
+        <linear>0.08</linear>
+        <quadratic>0.006</quadratic>
+      </attenuation>
+    </light>
+
+    <!-- Soft glow so the hull is self-lit from close range -->
+    <light name="beacon_glow" type="point">
+      <pose>0 0 0.30 0 0 0</pose>
+      <cast_shadows>false</cast_shadows>
+      <diffuse>0.55 0.60 0.65 1</diffuse>
+      <specular>0.10 0.10 0.10 1</specular>
+      <attenuation>
+        <range>6</range>
+        <constant>0.4</constant>
+        <linear>0.25</linear>
+        <quadratic>0.08</quadratic>
+      </attenuation>
+    </light>
+
+  </link>
+
+
+  <!-- ============================================================
+       HORIZONTAL THRUSTERS
+
+       Link poses stay axis-aligned; only the VISUAL is rotated to line the
+       duct up with the thrust axis. The Thruster plugin drives along the
+       joint axis, so rotating the link would be harmless here, but keeping
+       physics geometry and cosmetics separate means a future restyle can
+       never quietly change a thrust direction.
+       ============================================================ -->
+
+  <!-- FL — front-left (+x, +y), thrust axis (0.707, -0.707, 0) -->
+  <link name="thruster_fl">
+    <pose relative_to="base_link">0.40 0.31 -0.02 0 0 0</pose>
+    <inertial>
+      <mass>0.05</mass>
+      <inertia>
+        <ixx>3e-5</ixx><iyy>3e-5</iyy><izz>6e-5</izz>
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+    <visual name="duct">
+      <pose>0 0 0 0 1.5708 -0.7854</pose>
+      <geometry><cylinder><radius>0.060</radius><length>0.15</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.06 0.07 1</ambient>
+        <diffuse>0.14 0.16 0.18 1</diffuse>
+        <specular>0.35 0.35 0.40 1</specular>
+      </material>
+    </visual>
+    <visual name="hub">
+      <pose>0 0 0 0 1.5708 -0.7854</pose>
+      <geometry><cylinder><radius>0.030</radius><length>0.17</length></cylinder></geometry>
+      <material>
+        <ambient>0.45 0.05 0.05 1</ambient>
+        <diffuse>1.00 0.15 0.15 1</diffuse>
+        <emissive>0.55 0.04 0.04 1</emissive>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="thruster_fl_joint" type="revolute">
+    <parent>base_link</parent>
+    <child>thruster_fl</child>
+    <axis>
+      <xyz expressed_in="__model__">0.70711 -0.70711 0</xyz>
+      <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+    </axis>
+  </joint>
+
+
+  <!-- FR — front-right (+x, -y), thrust axis (0.707, +0.707, 0) -->
+  <link name="thruster_fr">
+    <pose relative_to="base_link">0.40 -0.31 -0.02 0 0 0</pose>
+    <inertial>
+      <mass>0.05</mass>
+      <inertia>
+        <ixx>3e-5</ixx><iyy>3e-5</iyy><izz>6e-5</izz>
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+    <visual name="duct">
+      <pose>0 0 0 0 1.5708 0.7854</pose>
+      <geometry><cylinder><radius>0.060</radius><length>0.15</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.06 0.07 1</ambient>
+        <diffuse>0.14 0.16 0.18 1</diffuse>
+        <specular>0.35 0.35 0.40 1</specular>
+      </material>
+    </visual>
+    <visual name="hub">
+      <pose>0 0 0 0 1.5708 0.7854</pose>
+      <geometry><cylinder><radius>0.030</radius><length>0.17</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.45 0.10 1</ambient>
+        <diffuse>0.15 1.00 0.25 1</diffuse>
+        <emissive>0.04 0.55 0.10 1</emissive>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="thruster_fr_joint" type="revolute">
+    <parent>base_link</parent>
+    <child>thruster_fr</child>
+    <axis>
+      <xyz expressed_in="__model__">0.70711 0.70711 0</xyz>
+      <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+    </axis>
+  </joint>
+
+
+  <!-- BL — back-left (-x, +y), thrust axis (0.707, +0.707, 0) -->
+  <link name="thruster_bl">
+    <pose relative_to="base_link">-0.40 0.31 -0.02 0 0 0</pose>
+    <inertial>
+      <mass>0.05</mass>
+      <inertia>
+        <ixx>3e-5</ixx><iyy>3e-5</iyy><izz>6e-5</izz>
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+    <visual name="duct">
+      <pose>0 0 0 0 1.5708 0.7854</pose>
+      <geometry><cylinder><radius>0.060</radius><length>0.15</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.06 0.07 1</ambient>
+        <diffuse>0.14 0.16 0.18 1</diffuse>
+        <specular>0.35 0.35 0.40 1</specular>
+      </material>
+    </visual>
+    <visual name="hub">
+      <pose>0 0 0 0 1.5708 0.7854</pose>
+      <geometry><cylinder><radius>0.030</radius><length>0.17</length></cylinder></geometry>
+      <material>
+        <ambient>0.06 0.12 0.45 1</ambient>
+        <diffuse>0.20 0.40 1.00 1</diffuse>
+        <emissive>0.05 0.12 0.60 1</emissive>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="thruster_bl_joint" type="revolute">
+    <parent>base_link</parent>
+    <child>thruster_bl</child>
+    <axis>
+      <xyz expressed_in="__model__">0.70711 0.70711 0</xyz>
+      <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+    </axis>
+  </joint>
+
+
+  <!-- BR — back-right (-x, -y), thrust axis (0.707, -0.707, 0) -->
+  <link name="thruster_br">
+    <pose relative_to="base_link">-0.40 -0.31 -0.02 0 0 0</pose>
+    <inertial>
+      <mass>0.05</mass>
+      <inertia>
+        <ixx>3e-5</ixx><iyy>3e-5</iyy><izz>6e-5</izz>
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+    <visual name="duct">
+      <pose>0 0 0 0 1.5708 -0.7854</pose>
+      <geometry><cylinder><radius>0.060</radius><length>0.15</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.06 0.07 1</ambient>
+        <diffuse>0.14 0.16 0.18 1</diffuse>
+        <specular>0.35 0.35 0.40 1</specular>
+      </material>
+    </visual>
+    <visual name="hub">
+      <pose>0 0 0 0 1.5708 -0.7854</pose>
+      <geometry><cylinder><radius>0.030</radius><length>0.17</length></cylinder></geometry>
+      <material>
+        <ambient>0.45 0.42 0.05 1</ambient>
+        <diffuse>1.00 0.92 0.15 1</diffuse>
+        <emissive>0.55 0.50 0.04 1</emissive>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="thruster_br_joint" type="revolute">
+    <parent>base_link</parent>
+    <child>thruster_br</child>
+    <axis>
+      <xyz expressed_in="__model__">0.70711 -0.70711 0</xyz>
+      <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+    </axis>
+  </joint>
+
+
+  <!-- ============================================================
+       VERTICAL THRUSTERS
+       ============================================================ -->
+
+  <!-- FL-top — front-left vertical, thrust axis (0, 0, 1) -->
+  <link name="thruster_fl_top">
+    <pose relative_to="base_link">0.30 0.30 0.10 0 0 0</pose>
+    <inertial>
+      <mass>0.05</mass>
+      <inertia>
+        <ixx>3e-5</ixx><iyy>3e-5</iyy><izz>6e-5</izz>
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+    <visual name="duct">
+      <geometry><cylinder><radius>0.060</radius><length>0.14</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.06 0.07 1</ambient>
+        <diffuse>0.14 0.16 0.18 1</diffuse>
+        <specular>0.35 0.35 0.40 1</specular>
+      </material>
+    </visual>
+    <visual name="hub">
+      <geometry><cylinder><radius>0.030</radius><length>0.16</length></cylinder></geometry>
+      <material>
+        <ambient>0.45 0.20 0.20 1</ambient>
+        <diffuse>1.00 0.55 0.55 1</diffuse>
+        <emissive>0.55 0.18 0.18 1</emissive>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="thruster_fl_top_joint" type="revolute">
+    <parent>base_link</parent>
+    <child>thruster_fl_top</child>
+    <axis>
+      <xyz>0 0 1</xyz>
+      <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+    </axis>
+  </joint>
+
+
+  <!-- FR-top — front-right vertical, thrust axis (0, 0, 1) -->
+  <link name="thruster_fr_top">
+    <pose relative_to="base_link">0.30 -0.30 0.10 0 0 0</pose>
+    <inertial>
+      <mass>0.05</mass>
+      <inertia>
+        <ixx>3e-5</ixx><iyy>3e-5</iyy><izz>6e-5</izz>
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+    <visual name="duct">
+      <geometry><cylinder><radius>0.060</radius><length>0.14</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.06 0.07 1</ambient>
+        <diffuse>0.14 0.16 0.18 1</diffuse>
+        <specular>0.35 0.35 0.40 1</specular>
+      </material>
+    </visual>
+    <visual name="hub">
+      <geometry><cylinder><radius>0.030</radius><length>0.16</length></cylinder></geometry>
+      <material>
+        <ambient>0.20 0.45 0.20 1</ambient>
+        <diffuse>0.55 1.00 0.55 1</diffuse>
+        <emissive>0.18 0.55 0.18 1</emissive>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="thruster_fr_top_joint" type="revolute">
+    <parent>base_link</parent>
+    <child>thruster_fr_top</child>
+    <axis>
+      <xyz>0 0 1</xyz>
+      <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+    </axis>
+  </joint>
+
+
+  <!-- BL-top — back-left vertical, thrust axis (0, 0, 1) -->
+  <link name="thruster_bl_top">
+    <pose relative_to="base_link">-0.30 0.30 0.10 0 0 0</pose>
+    <inertial>
+      <mass>0.05</mass>
+      <inertia>
+        <ixx>3e-5</ixx><iyy>3e-5</iyy><izz>6e-5</izz>
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+    <visual name="duct">
+      <geometry><cylinder><radius>0.060</radius><length>0.14</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.06 0.07 1</ambient>
+        <diffuse>0.14 0.16 0.18 1</diffuse>
+        <specular>0.35 0.35 0.40 1</specular>
+      </material>
+    </visual>
+    <visual name="hub">
+      <geometry><cylinder><radius>0.030</radius><length>0.16</length></cylinder></geometry>
+      <material>
+        <ambient>0.20 0.28 0.45 1</ambient>
+        <diffuse>0.55 0.72 1.00 1</diffuse>
+        <emissive>0.18 0.28 0.60 1</emissive>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="thruster_bl_top_joint" type="revolute">
+    <parent>base_link</parent>
+    <child>thruster_bl_top</child>
+    <axis>
+      <xyz>0 0 1</xyz>
+      <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+    </axis>
+  </joint>
+
+
+  <!-- BR-top — back-right vertical, thrust axis (0, 0, 1) -->
+  <link name="thruster_br_top">
+    <pose relative_to="base_link">-0.30 -0.30 0.10 0 0 0</pose>
+    <inertial>
+      <mass>0.05</mass>
+      <inertia>
+        <ixx>3e-5</ixx><iyy>3e-5</iyy><izz>6e-5</izz>
+        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+      </inertia>
+    </inertial>
+    <visual name="duct">
+      <geometry><cylinder><radius>0.060</radius><length>0.14</length></cylinder></geometry>
+      <material>
+        <ambient>0.05 0.06 0.07 1</ambient>
+        <diffuse>0.14 0.16 0.18 1</diffuse>
+        <specular>0.35 0.35 0.40 1</specular>
+      </material>
+    </visual>
+    <visual name="hub">
+      <geometry><cylinder><radius>0.030</radius><length>0.16</length></cylinder></geometry>
+      <material>
+        <ambient>0.45 0.20 0.45 1</ambient>
+        <diffuse>1.00 0.55 1.00 1</diffuse>
+        <emissive>0.55 0.18 0.55 1</emissive>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="thruster_br_top_joint" type="revolute">
+    <parent>base_link</parent>
+    <child>thruster_br_top</child>
+    <axis>
+      <xyz>0 0 1</xyz>
+      <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+    </axis>
+  </joint>
+
+
+  <!-- ============================================================
+       THRUSTER PLUGINS — one per thruster
+       velocity_control=true: cmd_thrust topic accepts Newtons directly
+       ============================================================ -->
+
+  <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+    <namespace>dummy_rov</namespace>
+    <joint_name>thruster_fl_joint</joint_name>
+    <fluid_density>997</fluid_density>
+    <propeller_diameter>0.10</propeller_diameter>
+    <thrust_coefficient>0.004422</thrust_coefficient>
+    <velocity_control>true</velocity_control>
+    <max_thrust_cmd>15.0</max_thrust_cmd>
+    <min_thrust_cmd>-15.0</min_thrust_cmd>
+  </plugin>
+
+  <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+    <namespace>dummy_rov</namespace>
+    <joint_name>thruster_fr_joint</joint_name>
+    <fluid_density>997</fluid_density>
+    <propeller_diameter>0.10</propeller_diameter>
+    <thrust_coefficient>0.004422</thrust_coefficient>
+    <velocity_control>true</velocity_control>
+    <max_thrust_cmd>15.0</max_thrust_cmd>
+    <min_thrust_cmd>-15.0</min_thrust_cmd>
+  </plugin>
+
+  <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+    <namespace>dummy_rov</namespace>
+    <joint_name>thruster_bl_joint</joint_name>
+    <fluid_density>997</fluid_density>
+    <propeller_diameter>0.10</propeller_diameter>
+    <thrust_coefficient>0.004422</thrust_coefficient>
+    <velocity_control>true</velocity_control>
+    <max_thrust_cmd>15.0</max_thrust_cmd>
+    <min_thrust_cmd>-15.0</min_thrust_cmd>
+  </plugin>
+
+  <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+    <namespace>dummy_rov</namespace>
+    <joint_name>thruster_br_joint</joint_name>
+    <fluid_density>997</fluid_density>
+    <propeller_diameter>0.10</propeller_diameter>
+    <thrust_coefficient>0.004422</thrust_coefficient>
+    <velocity_control>true</velocity_control>
+    <max_thrust_cmd>15.0</max_thrust_cmd>
+    <min_thrust_cmd>-15.0</min_thrust_cmd>
+  </plugin>
+
+  <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+    <namespace>dummy_rov</namespace>
+    <joint_name>thruster_fl_top_joint</joint_name>
+    <fluid_density>997</fluid_density>
+    <propeller_diameter>0.10</propeller_diameter>
+    <thrust_coefficient>0.004422</thrust_coefficient>
+    <velocity_control>true</velocity_control>
+    <max_thrust_cmd>15.0</max_thrust_cmd>
+    <min_thrust_cmd>-15.0</min_thrust_cmd>
+  </plugin>
+
+  <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+    <namespace>dummy_rov</namespace>
+    <joint_name>thruster_fr_top_joint</joint_name>
+    <fluid_density>997</fluid_density>
+    <propeller_diameter>0.10</propeller_diameter>
+    <thrust_coefficient>0.004422</thrust_coefficient>
+    <velocity_control>true</velocity_control>
+    <max_thrust_cmd>15.0</max_thrust_cmd>
+    <min_thrust_cmd>-15.0</min_thrust_cmd>
+  </plugin>
+
+  <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+    <namespace>dummy_rov</namespace>
+    <joint_name>thruster_bl_top_joint</joint_name>
+    <fluid_density>997</fluid_density>
+    <propeller_diameter>0.10</propeller_diameter>
+    <thrust_coefficient>0.004422</thrust_coefficient>
+    <velocity_control>true</velocity_control>
+    <max_thrust_cmd>15.0</max_thrust_cmd>
+    <min_thrust_cmd>-15.0</min_thrust_cmd>
+  </plugin>
+
+  <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
+    <namespace>dummy_rov</namespace>
+    <joint_name>thruster_br_top_joint</joint_name>
+    <fluid_density>997</fluid_density>
+    <propeller_diameter>0.10</propeller_diameter>
+    <thrust_coefficient>0.004422</thrust_coefficient>
+    <velocity_control>true</velocity_control>
+    <max_thrust_cmd>15.0</max_thrust_cmd>
+    <min_thrust_cmd>-15.0</min_thrust_cmd>
+  </plugin>
+
+
+  <!-- ============================================================
+       HYDRODYNAMICS — drag in water
+
+       NOTE: this plugin previously read
+
+           <linear_drag>40 40 80</linear_drag>
+           <angular_drag>5 5 5</angular_drag>
+
+       Neither element exists in gz-sim-hydrodynamics-system. They were parsed
+       as unknown tags and silently dropped, so the vehicle had NO drag at all
+       and simply accelerated under its net buoyancy — a free ascent from the
+       spawn point put it 21 m up in under 9 s. The real parameter names are
+       the per-axis damping coefficients below (negative = opposes motion):
+
+         xU / yV / zW      linear damping, N per m/s
+         kP / mQ / nR      angular damping, N.m per rad/s
+         *absU / *abs*     the quadratic pair for each, left at 0 here
+
+       Values carry over the intent of the old tags. Linear damping is the
+       original 40/40/80. Angular damping is scaled up from the original 5/5/5
+       because the thrusters moved outboard on the bigger frame, lengthening
+       every moment arm; these hold peak rotation rates at what 5/5/5 would
+       have given on the old 0.50 m frame:
+
+         roll   17.4 N.m / 11 = 1.58 rad/s   (old geometry:  7.8 / 5 = 1.56)
+         pitch  18.0 N.m /  9 = 2.00 rad/s   (old geometry: 10.2 / 5 = 2.04)
+         yaw    30.1 N.m /  9 = 3.35 rad/s   (old geometry: 17.0 / 5 = 3.39)
+
+       Real damping is dominated by the quadratic terms, and added mass is not
+       modelled at all — both belong to the Phase 5 tuning pass. This is the
+       linear-only model the SDF always meant to have, now actually applied.
+       ============================================================ -->
+  <plugin
+    filename="gz-sim-hydrodynamics-system"
+    name="gz::sim::systems::Hydrodynamics">
+    <link_name>base_link</link_name>
+
+    <xU>-40</xU>      <xUabsU>0</xUabsU>
+    <yV>-40</yV>      <yVabsV>0</yVabsV>
+    <zW>-80</zW>      <zWabsW>0</zWabsW>
+
+    <kP>-11</kP>      <kPabsP>0</kPabsP>
+    <mQ>-9</mQ>       <mQabsQ>0</mQabsQ>
+    <nR>-9</nR>       <nRabsR>0</nRabsR>
+  </plugin>
+
+</model>
+</sdf>

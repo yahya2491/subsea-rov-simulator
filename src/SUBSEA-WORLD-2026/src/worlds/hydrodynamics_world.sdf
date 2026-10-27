@@ -1,0 +1,747 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="default">
+
+    <!--
+      Underwater test world for dummy_rov.
+
+      Seabed sits at z = 0.79 m in a wide flat basin out to r = 15 m, rising
+      gently past that (see models/seabed). Everything resting on the bottom
+      near the origin is therefore placed against 0.79, NOT 0 — props pinned
+      to z=0 float or sink into the terrain.
+
+      The ROV spawns at z = 5, about 4.2 m above the bottom.
+    -->
+
+    <physics name="physics" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics"/>
+
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster"/>
+
+    <plugin
+      filename="gz-sim-buoyancy-system"
+      name="gz::sim::systems::Buoyancy">
+
+      <uniform_fluid_density>997</uniform_fluid_density>
+      <enable>dummy_rov</enable>
+
+    </plugin>
+
+    <!-- Gravity but replace this with a hydrodynamic plugin later on-->
+    <gravity>0 0 -9.81</gravity>
+
+
+    <!-- ============================================================
+         LIGHTING
+
+         Three-point rig adapted for water: a cool key from the surface, a
+         warm bounce back off the sand, and a dim rim to separate silhouettes
+         from the fog. The ROV carries its own headlights and strobe (see
+         models/dummy_rov), so the world no longer fakes a "tracking" spot.
+         ============================================================ -->
+
+    <!-- Key — sunlight through the surface, cool and slightly angled -->
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 30 0 0 0</pose>
+      <diffuse>0.78 0.88 1.00 1</diffuse>
+      <specular>0.45 0.55 0.68 1</specular>
+      <direction>0.25 0.15 -1</direction>
+      <attenuation>
+        <range>120</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+    </light>
+
+    <!-- Bounce — warm light scattering back up off the sand -->
+    <light name="fill_below" type="directional">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 -5 0 0 0</pose>
+      <diffuse>0.20 0.18 0.13 1</diffuse>
+      <specular>0.0 0.0 0.0 1</specular>
+      <direction>0 0 1</direction>
+    </light>
+
+    <!-- Rim — cold back light so shapes separate from the fog -->
+    <light name="rim_aft" type="directional">
+      <cast_shadows>false</cast_shadows>
+      <pose>-30 20 12 0 0 0</pose>
+      <diffuse>0.16 0.26 0.34 1</diffuse>
+      <specular>0.18 0.26 0.32 1</specular>
+      <direction>0.75 -0.5 -0.35</direction>
+    </light>
+
+    <!-- Surface shaft — broad column of light over the operating basin -->
+    <light name="surface_shaft" type="spot">
+      <cast_shadows>false</cast_shadows>
+      <pose>2 -2 22 0 0 0</pose>
+      <diffuse>0.45 0.60 0.72 1</diffuse>
+      <specular>0.20 0.28 0.34 1</specular>
+      <direction>-0.08 0.08 -1</direction>
+      <spot>
+        <inner_angle>0.45</inner_angle>
+        <outer_angle>1.05</outer_angle>
+        <falloff>1.8</falloff>
+      </spot>
+      <attenuation>
+        <range>60</range>
+        <constant>0.4</constant>
+        <linear>0.012</linear>
+        <quadratic>0.0012</quadratic>
+      </attenuation>
+    </light>
+
+
+    <!-- ============================================================
+         SCENE — water column
+
+         Ambient is well up from the old 0.05/0.12/0.20: at that level the
+         only thing readable was whatever a light happened to hit. Fog is
+         linear, so <density> is ignored; start/end do the work.
+         ============================================================ -->
+    <scene>
+      <ambient>0.10 0.16 0.19 1</ambient>
+      <background>0.015 0.070 0.110 1</background>
+      <fog>
+        <color>0.020 0.100 0.150 1</color>
+        <type>linear</type>
+        <start>5</start>
+        <end>45</end>
+      </fog>
+      <shadows>true</shadows>
+      <grid>false</grid>
+    </scene>
+
+
+    <!-- ============================================================
+         ENVIRONMENT
+         ============================================================ -->
+
+    <include>
+      <uri>model://seabed</uri>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+
+    <!-- Dummy ROV (replaces uissubsea_rov while origin/CG issues are resolved) -->
+    <include>
+      <uri>model://dummy_rov</uri>
+      <pose>0 0 5 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://rock</uri>
+      <name>rock1</name>
+      <pose>-5 5 0.73 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://pipeline</uri>
+      <pose>15 0 1.79 1.5708 0 0</pose>
+    </include>
+
+
+    <!-- ============================================================
+         BOULDER FIELD
+
+         Ellipsoids rather than spheres, tilted and part-buried, so the
+         bottom reads as geology instead of dropped marbles. Each sits ~10%
+         of its vertical radius below the 0.79 m seabed.
+         ============================================================ -->
+
+    <model name="boulder_01">
+      <static>true</static>
+      <pose>7 9 0.735 0.12 0.08 0.4</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>0.90 0.70 0.55</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>0.90 0.70 0.55</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.10 0.12 0.11 1</ambient>
+            <diffuse>0.34 0.38 0.35 1</diffuse>
+            <specular>0.10 0.11 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_02">
+      <static>true</static>
+      <pose>-9 -6 0.71 -0.09 0.14 1.1</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>1.40 1.10 0.80</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>1.40 1.10 0.80</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.09 0.10 0.10 1</ambient>
+            <diffuse>0.29 0.32 0.31 1</diffuse>
+            <specular>0.09 0.10 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_03">
+      <static>true</static>
+      <pose>13 6 0.745 0.16 -0.06 2.2</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>0.70 0.60 0.45</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>0.70 0.60 0.45</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.11 0.12 0.10 1</ambient>
+            <diffuse>0.37 0.39 0.34 1</diffuse>
+            <specular>0.10 0.11 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_04">
+      <static>true</static>
+      <pose>-12 8 0.695 0.07 0.11 0.7</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>1.80 1.30 0.95</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>1.80 1.30 0.95</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.08 0.10 0.09 1</ambient>
+            <diffuse>0.27 0.31 0.29 1</diffuse>
+            <specular>0.08 0.09 0.09 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_05">
+      <static>true</static>
+      <pose>5 -13 0.73 -0.13 0.05 2.9</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>1.00 0.85 0.60</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>1.00 0.85 0.60</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.10 0.11 0.11 1</ambient>
+            <diffuse>0.33 0.36 0.34 1</diffuse>
+            <specular>0.09 0.10 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_06">
+      <static>true</static>
+      <pose>-6 13 0.75 0.10 -0.12 1.6</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>0.60 0.50 0.40</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>0.60 0.50 0.40</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.11 0.12 0.11 1</ambient>
+            <diffuse>0.36 0.38 0.35 1</diffuse>
+            <specular>0.10 0.11 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_07">
+      <static>true</static>
+      <pose>18 -3 0.68 0.05 0.09 0.2</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>2.10 1.60 1.10</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>2.10 1.60 1.10</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.08 0.09 0.09 1</ambient>
+            <diffuse>0.26 0.30 0.28 1</diffuse>
+            <specular>0.08 0.09 0.09 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_08">
+      <static>true</static>
+      <pose>-16 -11 0.72 -0.06 -0.10 2.4</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>1.20 0.90 0.70</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>1.20 0.90 0.70</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.09 0.11 0.10 1</ambient>
+            <diffuse>0.31 0.34 0.32 1</diffuse>
+            <specular>0.09 0.10 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_09">
+      <static>true</static>
+      <pose>10 14 0.74 0.14 0.07 1.9</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>0.80 0.65 0.50</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>0.80 0.65 0.50</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.11 0.12 0.11 1</ambient>
+            <diffuse>0.35 0.37 0.34 1</diffuse>
+            <specular>0.10 0.11 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="boulder_10">
+      <static>true</static>
+      <pose>-3 -17 0.705 -0.11 0.06 0.9</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><ellipsoid><radii>1.50 1.20 0.85</radii></ellipsoid></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><ellipsoid><radii>1.50 1.20 0.85</radii></ellipsoid></geometry>
+          <material>
+            <ambient>0.09 0.10 0.10 1</ambient>
+            <diffuse>0.30 0.33 0.31 1</diffuse>
+            <specular>0.09 0.10 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+
+    <!-- ============================================================
+         WELLHEAD SKID
+
+         An inspection target with known dimensions — also the easiest way to
+         judge the ROV's scale and standoff distance by eye. Model origin is
+         on the seabed; children are relative to it.
+         ============================================================ -->
+
+    <model name="wellhead_skid">
+      <static>true</static>
+      <pose>12 -8 0.79 0 0 0.35</pose>
+
+      <link name="base">
+        <pose>0 0 0.125 0 0 0</pose>
+        <collision name="collision">
+          <geometry><box><size>3.0 3.0 0.25</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>3.0 3.0 0.25</size></box></geometry>
+          <material>
+            <ambient>0.08 0.09 0.10 1</ambient>
+            <diffuse>0.22 0.24 0.26 1</diffuse>
+            <specular>0.25 0.26 0.28 1</specular>
+          </material>
+        </visual>
+      </link>
+
+      <link name="stack_port">
+        <pose>-0.7 0 0.95 0 0 0</pose>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.22</radius><length>1.40</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.22</radius><length>1.40</length></cylinder></geometry>
+          <material>
+            <ambient>0.10 0.11 0.12 1</ambient>
+            <diffuse>0.28 0.30 0.33 1</diffuse>
+            <specular>0.35 0.36 0.40 1</specular>
+          </material>
+        </visual>
+      </link>
+
+      <link name="stack_stbd">
+        <pose>0.7 0 0.95 0 0 0</pose>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.22</radius><length>1.40</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.22</radius><length>1.40</length></cylinder></geometry>
+          <material>
+            <ambient>0.10 0.11 0.12 1</ambient>
+            <diffuse>0.28 0.30 0.33 1</diffuse>
+            <specular>0.35 0.36 0.40 1</specular>
+          </material>
+        </visual>
+      </link>
+
+      <!-- Yellow valve caps — the visual target for docking / inspection runs -->
+      <link name="cap_port">
+        <pose>-0.7 0 1.75 0 0 0</pose>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.34</radius><length>0.24</length></cylinder></geometry>
+          <material>
+            <ambient>0.40 0.34 0.03 1</ambient>
+            <diffuse>1.00 0.84 0.10 1</diffuse>
+            <emissive>0.22 0.18 0.02 1</emissive>
+          </material>
+        </visual>
+      </link>
+
+      <link name="cap_stbd">
+        <pose>0.7 0 1.75 0 0 0</pose>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.34</radius><length>0.24</length></cylinder></geometry>
+          <material>
+            <ambient>0.40 0.34 0.03 1</ambient>
+            <diffuse>1.00 0.84 0.10 1</diffuse>
+            <emissive>0.22 0.18 0.02 1</emissive>
+          </material>
+        </visual>
+      </link>
+
+      <!-- Tie-in spool between the stacks -->
+      <link name="spool">
+        <pose>0 0 1.35 0 1.5708 0</pose>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.10</radius><length>1.40</length></cylinder></geometry>
+          <material>
+            <ambient>0.09 0.10 0.11 1</ambient>
+            <diffuse>0.25 0.27 0.29 1</diffuse>
+            <specular>0.30 0.31 0.34 1</specular>
+          </material>
+        </visual>
+      </link>
+
+    </model>
+
+
+    <!-- ============================================================
+         SURVEY MARKERS
+
+         Fixed 2 m posts with lit heads. Standing references for judging
+         altitude and heading when the seabed texture alone gives nothing
+         to fix on.
+         ============================================================ -->
+
+    <model name="marker_north">
+      <static>true</static>
+      <pose>0 14 0.79 0 0 0</pose>
+      <link name="link">
+        <visual name="post">
+          <pose>0 0 1.0 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>2.0</length></cylinder></geometry>
+          <material>
+            <ambient>0.10 0.10 0.10 1</ambient>
+            <diffuse>0.20 0.21 0.22 1</diffuse>
+          </material>
+        </visual>
+        <visual name="head">
+          <pose>0 0 2.1 0 0 0</pose>
+          <geometry><sphere><radius>0.16</radius></sphere></geometry>
+          <material>
+            <ambient>0.45 0.18 0.02 1</ambient>
+            <diffuse>1.00 0.48 0.06 1</diffuse>
+            <emissive>0.80 0.32 0.03 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="marker_east">
+      <static>true</static>
+      <pose>14 0 0.79 0 0 0</pose>
+      <link name="link">
+        <visual name="post">
+          <pose>0 0 1.0 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>2.0</length></cylinder></geometry>
+          <material>
+            <ambient>0.10 0.10 0.10 1</ambient>
+            <diffuse>0.20 0.21 0.22 1</diffuse>
+          </material>
+        </visual>
+        <visual name="head">
+          <pose>0 0 2.1 0 0 0</pose>
+          <geometry><sphere><radius>0.16</radius></sphere></geometry>
+          <material>
+            <ambient>0.02 0.40 0.14 1</ambient>
+            <diffuse>0.08 1.00 0.32 1</diffuse>
+            <emissive>0.04 0.70 0.20 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="marker_west">
+      <static>true</static>
+      <pose>-14 0 0.79 0 0 0</pose>
+      <link name="link">
+        <visual name="post">
+          <pose>0 0 1.0 0 0 0</pose>
+          <geometry><cylinder><radius>0.05</radius><length>2.0</length></cylinder></geometry>
+          <material>
+            <ambient>0.10 0.10 0.10 1</ambient>
+            <diffuse>0.20 0.21 0.22 1</diffuse>
+          </material>
+        </visual>
+        <visual name="head">
+          <pose>0 0 2.1 0 0 0</pose>
+          <geometry><sphere><radius>0.16</radius></sphere></geometry>
+          <material>
+            <ambient>0.45 0.02 0.10 1</ambient>
+            <diffuse>1.00 0.08 0.24 1</diffuse>
+            <emissive>0.80 0.04 0.14 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+
+    <!-- ============================================================
+         GUI
+
+         Declaring <gui> replaces the stock layout wholesale, so the default
+         plugin set from gz-sim8/gui/gui.config is reproduced here. The only
+         real changes are camera_pose (opens framed on the ROV at 0 0 5) and
+         background_color (the viewport behind the fog).
+
+         Tip: right-click the ROV in the 3D view and pick "Follow" to keep the
+         camera locked on it while you fly.
+         ============================================================ -->
+    <gui fullscreen="0">
+
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.10 0.16 0.19</ambient_light>
+        <background_color>0.015 0.070 0.110</background_color>
+        <camera_pose>-4.5 -4.0 6.8 0 0.289 0.727</camera_pose>
+      </plugin>
+
+      <plugin filename="EntityContextMenuPlugin" name="Entity context menu">
+        <gz-gui>
+          <property key="state" type="string">floating</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="GzSceneManager" name="Scene Manager">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="InteractiveViewControl" name="Interactive view control">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="CameraTracking" name="Camera Tracking">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="MarkerManager" name="Marker manager">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="SelectEntities" name="Select Entities">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="Spawn" name="Spawn Entities">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="VisualizationCapabilities" name="Visualization Capabilities">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="WorldControl" name="World control">
+        <gz-gui>
+          <title>World control</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">72</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <play_pause>true</play_pause>
+        <step>true</step>
+        <start_paused>true</start_paused>
+        <use_event>true</use_event>
+      </plugin>
+
+      <plugin filename="WorldStats" name="World stats">
+        <gz-gui>
+          <title>World stats</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">110</property>
+          <property type="double" key="width">290</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="right" target="right"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <sim_time>true</sim_time>
+        <real_time>true</real_time>
+        <real_time_factor>true</real_time_factor>
+        <iterations>true</iterations>
+      </plugin>
+
+      <plugin filename="Shapes" name="Shapes">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="x" type="double">0</property>
+          <property key="y" type="double">0</property>
+          <property key="width" type="double">300</property>
+          <property key="height" type="double">50</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+          <property key="cardBackground" type="string">#666666</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="Lights" name="Lights">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="x" type="double">300</property>
+          <property key="y" type="double">0</property>
+          <property key="width" type="double">150</property>
+          <property key="height" type="double">50</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+          <property key="cardBackground" type="string">#666666</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="TransformControl" name="Transform control">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="x" type="double">0</property>
+          <property key="y" type="double">50</property>
+          <property key="width" type="double">250</property>
+          <property key="height" type="double">50</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+          <property key="cardBackground" type="string">#777777</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="Screenshot" name="Screenshot">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="x" type="double">250</property>
+          <property key="y" type="double">50</property>
+          <property key="width" type="double">50</property>
+          <property key="height" type="double">50</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+          <property key="cardBackground" type="string">#777777</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="CopyPaste" name="CopyPaste">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="x" type="double">300</property>
+          <property key="y" type="double">50</property>
+          <property key="width" type="double">100</property>
+          <property key="height" type="double">50</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+          <property key="cardBackground" type="string">#777777</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="ComponentInspector" name="Component inspector">
+        <gz-gui>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+      </plugin>
+
+      <plugin filename="EntityTree" name="Entity tree">
+        <gz-gui>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+      </plugin>
+
+    </gui>
+
+  </world>
+</sdf>

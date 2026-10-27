@@ -1,0 +1,225 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+<model name="uissubsea_rov">
+
+  <static>false</static>
+
+  <!-- ================= BASE ================= -->
+
+  <link name="base_link">
+
+    <inertial>
+      <!-- base_link is at mesh origin, so place COM at the hull center relative to base_link -->
+      <pose>0.4315 0.1793 0.32 0 0 0</pose>
+      <!-- Tuned near neutral buoyancy for the current 0.61x0.38x0.64 m collision volume -->
+      <mass>148.0</mass>
+      <inertia>
+        <ixx>1.48</ixx>
+        <iyy>1.48</iyy>
+        <izz>1.97</izz>
+        <ixy>0</ixy>
+        <ixz>0</ixz>
+        <iyz>0</iyz>
+      </inertia>
+    </inertial>
+
+  <visual name="rov_visual">
+  <pose>0 0 0 0 0 0</pose>
+    <geometry>
+      <mesh>
+        
+        <uri>model://uissubsea_rov/meshes/rov.stl</uri>
+        <scale>0.01 0.01 0.01</scale>
+      </mesh>
+    </geometry>
+
+    <material>
+      <ambient>0 0.5 1 1</ambient>
+      <diffuse>0.2 0.7 1 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+    </material>
+
+  </visual>
+
+  <!-- COLLISION -->
+  <collision name="rov_collision">
+  <!-- center box on mesh: STL center=(431.5,179.3,320)mm * 0.001 -->
+  <pose>0.4315 0.1793 0.32 0 0 0</pose>
+    <geometry>
+      <box>
+        <size>0.61 0.38 0.64</size>
+      </box>
+    </geometry>
+  </collision>
+
+  </link>
+
+  <!-- ================= REFERENCE FRAME ================= -->
+
+  <link name="reference_frame">
+    <pose>0 0 0 0 0 0</pose>
+
+    <inertial>
+      <mass>0.001</mass>
+      <inertia>
+        <ixx>0.0001</ixx>
+        <iyy>0.0001</iyy>
+        <izz>0.0001</izz>
+      </inertia>
+    </inertial>
+
+  </link>
+
+  <joint name="reference_frame_joint" type="fixed">
+    <parent>base_link</parent>
+    <child>reference_frame</child>
+  </joint>
+
+  <!-- ================= THRUSTERS ================= -->
+  
+  <!-- Thruster positions = absolute STL coords (mm) * 0.001 -->
+  <!--front left bottom -->
+  <link name="thruster_fl">
+    <pose relative_to="base_link">5.6641 1.72599 5.84761 0 0 0</pose>
+    <!-- TEMP MARKER: remove before release -->
+    <visual name="marker_fl">
+      <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <material><ambient>1 0 0 1</ambient><diffuse>1 0 0 1</diffuse></material>
+    </visual>
+  </link>
+
+  <!--front right bottom -->
+  <link name="thruster_fr">
+    <pose relative_to="base_link">2.96659 1.72599 5.84761 0 0 0</pose>
+    <!-- TEMP MARKER: remove before release -->
+    <visual name="marker_fr">
+      <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <material><ambient>0 1 0 1</ambient><diffuse>0 1 0 1</diffuse></material>
+    </visual>
+  </link>
+  <!--rear right bottom -->
+  <link name="thruster_bl">
+    <pose relative_to="base_link">2.96659 1.72599 0.55239 0 0 0</pose>
+    <!-- TEMP MARKER: remove before release -->
+    <visual name="marker_bl">
+      <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <material><ambient>0 0 1 1</ambient><diffuse>0 0 1 1</diffuse></material>
+    </visual>
+  </link>
+  <!--rear left bottom -->
+  <link name="thruster_br">
+    <pose relative_to="base_link">5.6641 1.72599 0.55239 0 0 0</pose>
+    <!-- TEMP MARKER: remove before release -->
+    <visual name="marker_br">
+      <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
+    </visual>
+  </link>
+
+    <!--front left top -->
+  <link name="thruster_br_top">
+    <pose relative_to="base_link">6.76535 2.493 5.55 0 0 0</pose>
+    <!-- TEMP MARKER: remove before release -->
+    <visual name="marker_br">
+      <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
+    </visual>
+  </link>
+
+    <!--front right top -->
+  <link name="thruster_br_bottom">
+    <pose relative_to="base_link">1.86535 2.493 5.55 0 0 0</pose>
+    <!-- TEMP MARKER: remove before release -->
+    <visual name="marker_br">
+      <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
+    </visual>
+  </link>
+
+    <!--rear right top -->
+  <link name="thruster_br bottom2">
+    <pose relative_to="base_link">1.86535 2.493 0.85 0 0 0</pose>
+    <!-- TEMP MARKER: remove before release -->
+    <visual name="marker_br">
+      <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
+    </visual>
+  </link>
+
+    <!--rear left top -->
+  <link name="thruster_br bottom3">
+    <pose relative_to="base_link">6.76535 2.493 0.85 0 0 0</pose>
+    <!-- TEMP MARKER: remove before release -->
+    <visual name="marker_br">
+      <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
+    </visual>
+  </link>
+
+  <!-- ================= JOINTS ================= -->
+
+  <joint name="thruster_fl_joint" type="fixed">
+    <parent>base_link</parent>
+    <child>thruster_fl</child>
+  </joint>
+
+  <joint name="thruster_fr_joint" type="fixed">
+    <parent>base_link</parent>
+    <child>thruster_fr</child>
+  </joint>
+
+  <joint name="thruster_bl_joint" type="fixed">
+    <parent>base_link</parent>
+    <child>thruster_bl</child>
+  </joint>
+
+  <joint name="thruster_br_joint" type="fixed">
+    <parent>base_link</parent>
+    <child>thruster_br</child>
+  </joint>
+
+  <!-- ================= CONTROL ================= -->
+  <plugin
+    filename="gz-sim-thruster-system"
+    name="gz::sim::systems::Thruster">
+
+    <thruster>
+      <link_name>thruster_fl</link_name>
+      <direction>0 0 1</direction>
+      <max_thrust>15</max_thrust>
+    </thruster>
+
+    <thruster>
+      <link_name>thruster_fr</link_name>
+      <direction>0 0 1</direction>
+      <max_thrust>15</max_thrust>
+    </thruster>
+
+    <thruster>
+      <link_name>thruster_bl</link_name>
+      <direction>0 0 1</direction>
+      <max_thrust>15</max_thrust>
+    </thruster>
+
+    <thruster>
+      <link_name>thruster_br</link_name>
+      <direction>0 0 1</direction>
+      <max_thrust>15</max_thrust>
+    </thruster>
+
+  </plugin>
+
+
+  <plugin
+    filename="gz-sim-hydrodynamics-system"
+    name="gz::sim::systems::Hydrodynamics">
+
+    <link_name>base_link</link_name>
+
+    <linear_drag>40 40 80</linear_drag>
+    <angular_drag>5 5 5</angular_drag>
+
+  </plugin>
+
+</model>
+</sdf>

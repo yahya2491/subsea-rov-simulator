@@ -1,0 +1,14 @@
+material Seabed/Sand
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture sand-texture.jpg
+        scale 10 10
+      }
+    }
+  }
+}

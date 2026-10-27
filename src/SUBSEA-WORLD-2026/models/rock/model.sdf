@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="rock">
+    <static>true</static>
+
+    <!--
+      Standalone boulder. Ellipsoid rather than a sphere so it does not read
+      as a dropped marble, and toned to match the inline boulder field in
+      hydrodynamics_world.sdf.
+
+      Place it ~0.2 m below local seabed height so it sits part-buried; on the
+      current seabed the basin floor is at z = 0.79.
+    -->
+
+    <link name="rock_link">
+
+      <collision name="collision">
+        <geometry>
+          <ellipsoid>
+            <radii>0.85 0.68 0.55</radii>
+          </ellipsoid>
+        </geometry>
+      </collision>
+
+      <visual name="visual">
+        <geometry>
+          <ellipsoid>
+            <radii>0.85 0.68 0.55</radii>
+          </ellipsoid>
+        </geometry>
+
+        <material>
+          <ambient>0.10 0.11 0.11 1</ambient>
+          <diffuse>0.32 0.35 0.33 1</diffuse>
+          <specular>0.10 0.11 0.10 1</specular>
+        </material>
+      </visual>
+
+    </link>
+  </model>
+</sdf>

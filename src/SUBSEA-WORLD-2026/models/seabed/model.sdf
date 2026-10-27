@@ -1,0 +1,71 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="seabed">
+    <static>true</static>
+
+    <!--
+      Rolling sand seabed, 200 x 200 m, ~5 m of relief.
+
+      seabed_heightmap.png is a 16-bit 513x513 greyscale map (Gazebo requires
+      (2^n)+1 per side). It has a soft, wide basin around the origin so the ROV
+      spawn at z=5 always has clear water beneath it and the pipeline / props
+      sit on level ground.
+
+      Collision and visual deliberately use the SAME <size>. They used to
+      disagree (100x100 collision under a 200x100 visual), which let anything
+      past 50 m drop through visible seabed.
+    -->
+
+    <link name="link">
+
+      <collision name="collision">
+        <geometry>
+          <heightmap>
+            <uri>model://seabed/materials/textures/seabed_heightmap.png</uri>
+            <size>200 200 6</size>
+            <pos>0 0 0</pos>
+          </heightmap>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.9</mu>
+              <mu2>0.9</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+
+      <visual name="visual">
+        <geometry>
+          <heightmap>
+            <uri>model://seabed/materials/textures/seabed_heightmap.png</uri>
+            <size>200 200 6</size>
+            <pos>0 0 0</pos>
+
+            <!-- Layer 0: rippled sand, covers the basin and the low ground -->
+            <texture>
+              <diffuse>model://seabed/materials/textures/sand-texture.jpg</diffuse>
+              <normal>model://seabed/materials/textures/sand-normal.jpg</normal>
+              <size>6</size>
+            </texture>
+
+            <!-- Layer 1: darker gravel, fades in over the dune crests -->
+            <texture>
+              <diffuse>model://seabed/materials/textures/seabed-gravel.jpg</diffuse>
+              <normal>model://seabed/materials/textures/gravel-normal.jpg</normal>
+              <size>9</size>
+            </texture>
+
+            <blend>
+              <min_height>2.4</min_height>
+              <fade_dist>1.6</fade_dist>
+            </blend>
+
+          </heightmap>
+        </geometry>
+      </visual>
+
+    </link>
+  </model>
+</sdf>
