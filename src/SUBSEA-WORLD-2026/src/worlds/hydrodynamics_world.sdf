@@ -11,7 +11,17 @@
       to z=0 float or sink into the terrain.
 
       The ROV spawns at z = 5, about 4.2 m above the bottom.
+
+      The water column is uniform (no free surface is simulated). For depth
+      and acoustic positioning the surface is taken to be the plane z = 10 m,
+      so the spawn point is 5 m deep. That value lives in
+      subsea_rov_bringup/config/environment.yaml; change both together.
     -->
+
+    <!-- Approximate Earth field near Stavanger, ENU, tesla: ~50.6 uT total,
+         ~72 deg inclination, ~1.5 deg east declination. The AHRS uses the
+         same vector (environment.yaml) as its heading reference. -->
+    <magnetic_field>0.41e-6 15.6e-6 -48.1e-6</magnetic_field>
 
     <physics name="physics" type="ode">
       <max_step_size>0.001</max_step_size>
@@ -34,6 +44,32 @@
       <enable>dummy_rov</enable>
 
     </plugin>
+
+    <!-- Sensor systems. The DVL is a rendering sensor, so the Sensors system
+         (and a render engine) is required even when running headless. -->
+    <plugin
+      filename="gz-sim-sensors-system"
+      name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <plugin
+      filename="gz-sim-imu-system"
+      name="gz::sim::systems::Imu"/>
+
+    <plugin
+      filename="gz-sim-magnetometer-system"
+      name="gz::sim::systems::Magnetometer"/>
+
+    <plugin
+      filename="gz-sim-dvl-system"
+      name="gz::sim::systems::DopplerVelocityLogSystem"/>
+
+    <!-- External forces for disturbance testing:
+         /world/default/wrench/persistent and /world/default/wrench/clear -->
+    <plugin
+      filename="gz-sim-apply-link-wrench-system"
+      name="gz::sim::systems::ApplyLinkWrench"/>
 
     <!-- Gravity but replace this with a hydrodynamic plugin later on-->
     <gravity>0 0 -9.81</gravity>

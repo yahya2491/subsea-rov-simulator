@@ -1,0 +1,93 @@
+# Disturbance-rejection scenarios for the hover controller.
+#
+# Every run: the stack starts, the controller engages, the vehicle is
+# commanded to the scenario setpoint and given `settle` seconds. Then t = 0,
+# the timed events play out and metrics are taken over [0, duration]. All
+# errors are ground truth vs. setpoint. The controller itself only ever sees
+# the navigation estimate built from IMU, magnetometer, DVL, pressure and USBL.
+#
+# Event types (t in seconds after t = 0):
+#   current:  [vx, vy, vz]                steady ocean current, m/s, world
+#   wave:     {amplitude: [ax, ay, az], period: T, duration: D}
+#             orbital water motion: x/y follow A sin(wt), z follows A cos(wt)
+#   push:     {force: [fx, fy, fz], duration: D}   external force at the CoM, N
+#   setpoint: {position: [x, y, z], yaw_deg: psi}
+# Add `recover: true` to an event to measure the time from its end until the
+# vehicle is back inside `recovery_tolerance` and stays there.
+#
+# Limits are acceptance criteria; any metric not listed is reported only.
+
+defaults:
+  settle: 20.0
+  duration: 60.0
+  final_window: 15.0            # s, for final_horizontal_rms
+  recovery_tolerance: 0.10      # m, horizontal and depth
+  setpoint: {position: [0.0, 0.0, 5.0], yaw_deg: 0.0}
+
+scenarios:
+
+  calm_hold:
+    description: Station keeping in still water. Baseline for sensor-noise-driven motion.
+    events: []
+    limits:
+      horizontal_rms: 0.05
+      horizontal_max: 0.15
+      depth_max: 0.05
+      yaw_max_deg: 2.0
+      tilt_max_deg: 3.0
+      nav_position_rms: 0.08
+
+  steady_current:
+    description: A 0.22 m/s current switches on at t = 5 s. The integrators must take it out.
+    events:
+      - {t: 5.0, current: [0.20, 0.10, 0.0], recover: true}
+    limits:
+      horizontal_max: 0.40
+      final_horizontal_rms: 0.06
+      depth_max: 0.10
+      yaw_max_deg: 3.0
+      recovery_time: 25.0
+
+  current_heading_change:
+    description: 0.2 m/s cross current, then a 90 deg heading change while holding station.
+    events:
+      - {t: 5.0, current: [0.0, 0.20, 0.0]}
+      - {t: 25.0, setpoint: {position: [0.0, 0.0, 5.0], yaw_deg: 90.0}}
+    limits:
+      horizontal_max: 0.40
+      final_horizontal_rms: 0.06
+      depth_max: 0.10
+      final_yaw_max_deg: 3.0
+
+  wave_orbital:
+    description: Orbital wave motion, 0.15 m/s horizontal / 0.08 m/s vertical, 7 s period.
+    events:
+      - {t: 5.0, wave: {amplitude: [0.15, 0.0, 0.08], period: 7.0, duration: 50.0}}
+    limits:
+      horizontal_rms: 0.15
+      horizontal_max: 0.30
+      depth_max: 0.15
+      yaw_max_deg: 3.0
+
+  impulse_push:
+    description: Two shoves, 40 N sideways for 1 s, then 30 N forward + 30 N down for 1.5 s.
+    events:
+      - {t: 10.0, push: {force: [0.0, 40.0, 0.0], duration: 1.0}, recover: true}
+      - {t: 35.0, push: {force: [30.0, 0.0, -30.0], duration: 1.5}, recover: true}
+    limits:
+      horizontal_max: 0.50
+      depth_max: 0.40
+      recovery_time: 12.0
+      final_horizontal_rms: 0.05
+
+  setpoint_steps:
+    description: Reposition 1 m, then 1 m sideways + 1 m deeper + 45 deg, then home.
+    duration: 70.0
+    events:
+      - {t: 5.0, setpoint: {position: [1.0, 0.0, 5.0], yaw_deg: 0.0}, recover: true}
+      - {t: 25.0, setpoint: {position: [1.0, 1.0, 4.0], yaw_deg: 45.0}, recover: true}
+      - {t: 45.0, setpoint: {position: [0.0, 0.0, 5.0], yaw_deg: 0.0}, recover: true}
+    limits:
+      recovery_time: 15.0
+      final_horizontal_rms: 0.05
+      tilt_max_deg: 5.0

@@ -1,0 +1,9 @@
+# Environment constants shared by every node (the /** key).
+# They must agree with the world, src/worlds/hydrodynamics_world.sdf.
+/**:
+  ros__parameters:
+    surface_z: 10.0                   # m, world z of the water surface plane
+    water_density: 997.0              # kg/m^3, Buoyancy <uniform_fluid_density>
+    gravity: 9.81                     # m/s^2
+    atmospheric_pressure: 101325.0    # Pa
+    magnetic_field: [0.41e-6, 15.6e-6, -48.1e-6]   # T, ENU, world <magnetic_field>

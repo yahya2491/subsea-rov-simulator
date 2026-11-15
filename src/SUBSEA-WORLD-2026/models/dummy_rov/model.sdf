@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<sdf version="1.9">
+<sdf version="1.9" xmlns:gz="http://gazebosim.org/schema">
 <model name="dummy_rov">
   <static>false</static>
 
@@ -90,7 +90,7 @@
       </inertia>
     </inertial>
 
-    <!-- ---------- Collision = displaced volume (see header) ---------- -->
+    <!-- ========== Collision = displaced volume (see header) ========== -->
 
     <collision name="hull_collision">
       <pose>0 0 0 0 1.5708 0</pose>
@@ -109,7 +109,7 @@
       <geometry><box><size>0.58 0.13 0.06</size></box></geometry>
     </collision>
 
-    <!-- ---------- Pressure hull ---------- -->
+    <!-- ========== Pressure hull ========== -->
 
     <visual name="hull">
       <pose>0 0 0 0 1.5708 0</pose>
@@ -147,7 +147,7 @@
       </material>
     </visual>
 
-    <!-- ---------- Buoyancy blocks ---------- -->
+    <!-- ========== Buoyancy blocks ========== -->
 
     <visual name="float_port">
       <pose>0 0.17 0.15 0 0 0</pose>
@@ -183,7 +183,7 @@
       </material>
     </visual>
 
-    <!-- ---------- Frame cage (visual only — no displaced volume) ---------- -->
+    <!-- ========== Frame cage (visual only — no displaced volume) ========== -->
 
     <visual name="rail_top_port">
       <pose>0 0.33 0.21 0 0 0</pose>
@@ -305,7 +305,7 @@
       </material>
     </visual>
 
-    <!-- ---------- Landing skids ---------- -->
+    <!-- ========== Landing skids ========== -->
 
     <visual name="skid_port">
       <pose>0 0.26 -0.205 0 0 0</pose>
@@ -327,7 +327,7 @@
       </material>
     </visual>
 
-    <!-- ---------- Camera and bow lights ---------- -->
+    <!-- ========== Camera and bow lights ========== -->
 
     <visual name="camera_housing">
       <pose>0.36 0 0.10 0 1.5708 0</pose>
@@ -389,7 +389,7 @@
       </material>
     </visual>
 
-    <!-- ---------- Navigation markers ---------- -->
+    <!-- ========== Navigation markers ========== -->
 
     <visual name="nav_port">
       <pose>0.40 0.33 0.14 0 0 0</pose>
@@ -432,7 +432,7 @@
       </material>
     </visual>
 
-    <!-- ---------- Tether stub ---------- -->
+    <!-- ========== Tether stub ========== -->
 
     <visual name="tether_stub">
       <pose>-0.50 0 0.16 0 1.5708 0</pose>
@@ -444,7 +444,7 @@
       </material>
     </visual>
 
-    <!-- ---------- Vehicle lighting ----------
+    <!-- ========== Vehicle lighting ==========
          Attached to the link, so they travel with the ROV. Shadows are off:
          with eight thrusters and a heightmap in frame, three shadow-casting
          lights on a moving body costs far more than it shows.
@@ -502,7 +502,137 @@
       </attenuation>
     </light>
 
+    <!-- ========== Sensor housings (visual only: no collision, so the
+         displaced volume and buoyancy budget above are unchanged) ========== -->
+
+    <visual name="dvl_head">
+      <pose>-0.12 0 -0.150 0 0 0</pose>
+      <geometry><cylinder><radius>0.045</radius><length>0.04</length></cylinder></geometry>
+      <material>
+        <ambient>0.10 0.10 0.10 1</ambient>
+        <diffuse>0.25 0.25 0.27 1</diffuse>
+      </material>
+    </visual>
+
+    <visual name="usbl_transponder">
+      <pose>-0.35 0 0.215 0 0 0</pose>
+      <geometry><cylinder><radius>0.025</radius><length>0.07</length></cylinder></geometry>
+      <material>
+        <ambient>0.30 0.30 0.30 1</ambient>
+        <diffuse>0.80 0.80 0.82 1</diffuse>
+      </material>
+    </visual>
+
+    <!-- ============================================================
+         ONBOARD SENSORS
+
+         All sensor frames are FLU and axis-aligned with base_link; only
+         the mount position differs. Mount positions are duplicated in
+         subsea_rov_bringup/config/vehicle.yaml for the ROS side, and
+         test_vehicle_config.py fails if the two ever drift apart.
+
+           sensor            mount (base_link)      rate    topic
+           IMU (gyro+accel)  ( 0.00, 0,  0.000)   100 Hz  /model/dummy_rov/imu
+           magnetometer      ( 0.00, 0,  0.000)    50 Hz  /model/dummy_rov/magnetometer
+           DVL (4 beam)      (-0.12, 0, -0.171)     8 Hz  /model/dummy_rov/dvl/velocity
+           pressure          (-0.28, 0,  0.080)    see subsea_rov_sensors (frame below)
+           USBL transponder  (-0.35, 0,  0.250)    see subsea_rov_sensors (frame below)
+
+         Noise figures are representative of a mid-grade MEMS IMU and a
+         compact bottom-tracking DVL; they are parameters, not a datasheet.
+         ============================================================ -->
+
+    <!-- IMU: MEMS-grade white noise, a fixed turn-on bias drawn once per run,
+         and a slow Gauss-Markov bias walk on top. -->
+    <sensor name="imu" type="imu">
+      <pose>0 0 0 0 0 0</pose>
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <topic>/model/dummy_rov/imu</topic>
+      <imu>
+        <angular_velocity>
+          <x><noise type="gaussian"><mean>0</mean><stddev>2e-3</stddev><bias_mean>0</bias_mean><bias_stddev>5e-4</bias_stddev><dynamic_bias_stddev>2e-5</dynamic_bias_stddev><dynamic_bias_correlation_time>400</dynamic_bias_correlation_time></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>2e-3</stddev><bias_mean>0</bias_mean><bias_stddev>5e-4</bias_stddev><dynamic_bias_stddev>2e-5</dynamic_bias_stddev><dynamic_bias_correlation_time>400</dynamic_bias_correlation_time></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>2e-3</stddev><bias_mean>0</bias_mean><bias_stddev>5e-4</bias_stddev><dynamic_bias_stddev>2e-5</dynamic_bias_stddev><dynamic_bias_correlation_time>400</dynamic_bias_correlation_time></noise></z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x><noise type="gaussian"><mean>0</mean><stddev>2e-2</stddev><bias_mean>0</bias_mean><bias_stddev>1e-2</bias_stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>2e-2</stddev><bias_mean>0</bias_mean><bias_stddev>1e-2</bias_stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>2e-2</stddev><bias_mean>0</bias_mean><bias_stddev>1e-2</bias_stddev></noise></z>
+        </linear_acceleration>
+      </imu>
+    </sensor>
+
+    <!-- Magnetometer: heading reference for the AHRS. The world sets the
+         magnetic field vector explicitly so the navigation config can match. -->
+    <sensor name="magnetometer" type="magnetometer">
+      <pose>0 0 0 0 0 0</pose>
+      <always_on>true</always_on>
+      <update_rate>50</update_rate>
+      <topic>/model/dummy_rov/magnetometer</topic>
+      <magnetometer>
+        <x><noise type="gaussian"><mean>0</mean><stddev>3e-7</stddev></noise></x>
+        <y><noise type="gaussian"><mean>0</mean><stddev>3e-7</stddev></noise></y>
+        <z><noise type="gaussian"><mean>0</mean><stddev>3e-7</stddev></noise></z>
+      </magnetometer>
+    </sensor>
+
+    <!-- DVL: 4-beam Janus array, 25 deg beam tilt, bottom tracking only.
+         Rendering-based, so it ray-casts against the real seabed heightmap
+         and loses lock when the bottom is out of range. Velocity is the
+         sensor's own velocity over ground, expressed in the (FLU) sensor
+         frame; the navigation filter removes the lever-arm term. -->
+    <sensor name="dvl" type="custom" gz:type="dvl">
+      <pose>-0.12 0 -0.171 0 0 0</pose>
+      <always_on>true</always_on>
+      <update_rate>8</update_rate>
+      <topic>/model/dummy_rov/dvl/velocity</topic>
+      <gz:dvl>
+        <type>phased_array</type>
+        <arrangement degrees="true">
+          <beam id="1"><aperture>2</aperture><rotation>45</rotation><tilt>25</tilt></beam>
+          <beam><aperture>2</aperture><rotation>135</rotation><tilt>25</tilt></beam>
+          <beam><aperture>2</aperture><rotation>-45</rotation><tilt>25</tilt></beam>
+          <beam><aperture>2</aperture><rotation>-135</rotation><tilt>25</tilt></beam>
+        </arrangement>
+        <tracking>
+          <bottom_mode>
+            <when>best</when>
+            <noise type="gaussian"><stddev>0.005</stddev></noise>
+            <visualize>false</visualize>
+          </bottom_mode>
+        </tracking>
+        <resolution>0.01</resolution>
+        <minimum_range>0.05</minimum_range>
+        <maximum_range>50.</maximum_range>
+      </gz:dvl>
+    </sensor>
+
   </link>
+
+  <!-- Mounts for the two sensors that are modelled on the ROS side
+       (subsea_rov_sensors): Gazebo has no water-pressure sensor, and a USBL
+       is a topside system, so neither lives in the physics engine. -->
+  <frame name="pressure_sensor" attached_to="base_link">
+    <pose relative_to="base_link">-0.28 0 0.08 0 0 0</pose>
+  </frame>
+
+  <frame name="usbl_transponder" attached_to="base_link">
+    <pose relative_to="base_link">-0.35 0 0.25 0 0 0</pose>
+  </frame>
+
+  <!-- Ground truth for sensor models and validation only. The controller
+       never sees this; it runs on the navigation estimate. -->
+  <plugin
+    filename="gz-sim-odometry-publisher-system"
+    name="gz::sim::systems::OdometryPublisher">
+    <odom_frame>world</odom_frame>
+    <robot_base_frame>base_link</robot_base_frame>
+    <odom_publish_frequency>50</odom_publish_frequency>
+    <odom_topic>/model/dummy_rov/ground_truth/odometry</odom_topic>
+    <tf_topic>/model/dummy_rov/ground_truth/pose</tf_topic>
+    <dimensions>3</dimensions>
+  </plugin>
 
 
   <!-- ============================================================

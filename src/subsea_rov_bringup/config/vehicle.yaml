@@ -1,0 +1,36 @@
+# dummy_rov geometry, base_link frame (FLU, origin at the centre of mass).
+# Must agree with models/dummy_rov/model.sdf; test_vehicle_config.py checks it.
+/**:
+  ros__parameters:
+    # Sensor mounts, m
+    imu_mount: [0.0, 0.0, 0.0]
+    dvl_mount: [-0.12, 0.0, -0.171]
+    pressure_mount: [-0.28, 0.0, 0.08]
+    usbl_mount: [-0.35, 0.0, 0.25]
+
+    # Thrusters, index 0-7. Positive command pushes along the direction.
+    thruster_names: [fl, fr, bl, br, fl_top, fr_top, bl_top, br_top]
+    thruster_joints: [thruster_fl_joint, thruster_fr_joint, thruster_bl_joint,
+                      thruster_br_joint, thruster_fl_top_joint, thruster_fr_top_joint,
+                      thruster_bl_top_joint, thruster_br_top_joint]
+    thruster_positions: [ 0.40,  0.31, -0.02,
+                          0.40, -0.31, -0.02,
+                         -0.40,  0.31, -0.02,
+                         -0.40, -0.31, -0.02,
+                          0.30,  0.30,  0.10,
+                          0.30, -0.30,  0.10,
+                         -0.30,  0.30,  0.10,
+                         -0.30, -0.30,  0.10]
+    thruster_directions: [0.70711, -0.70711, 0.0,
+                          0.70711,  0.70711, 0.0,
+                          0.70711,  0.70711, 0.0,
+                          0.70711, -0.70711, 0.0,
+                          0.0, 0.0, 1.0,
+                          0.0, 0.0, 1.0,
+                          0.0, 0.0, 1.0,
+                          0.0, 0.0, 1.0]
+    # Saturation is shared within a group (see allocation.py)
+    thruster_groups: [horizontal, horizontal, horizontal, horizontal,
+                      vertical, vertical, vertical, vertical]
+    max_thrust: 15.0                  # N, matches Thruster <max_thrust_cmd>
+    min_thrust: -15.0

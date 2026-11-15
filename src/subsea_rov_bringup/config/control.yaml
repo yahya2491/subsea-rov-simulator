@@ -1,0 +1,39 @@
+# Hover controller and thruster allocation.
+#
+# Gains come from pole placement on each axis's linear model
+#   m * a + d * v = F
+# with all three PID closed-loop poles at -w (subsea_rov_control/hover.py):
+#   kp = 3 m w^2,  ki = m w^3,  kd = 3 m w - d
+#
+#   axis   m (kg | kg m^2)   d (from SDF)   w (rad/s)   kp      ki     kd
+#   x, y   34.6              40             0.8         66.4    17.7   43.0
+#   z      34.6              80             1.0         103.8   34.6   23.8
+#   yaw    3.8               9              1.2         16.4    6.6    4.7
+#
+# m includes the eight 0.05 kg thruster links. Gazebo models no added mass.
+# Roll and pitch are passively stable (centre of buoyancy 37 mm above the
+# centre of mass), so they get a light PD with a small integrator.
+
+/**/hover_controller:
+  ros__parameters:
+    rate_hz: 50.0
+    nav_timeout: 0.5                  # s, stale estimate -> zero wrench
+    auto_enable: true                 # hold the first estimated pose
+    # Net buoyancy measured in Gazebo: 0.182 m/s free ascent x 80 N/(m/s)
+    # = +14.6 N. Feed it forward as a downward force.
+    buoyancy_feedforward: -14.6       # N, world z
+    # Body wrench limits [Fx Fy Fz Mx My Mz]; the allocator's max single-axis
+    # wrench is [42.4 42.4 60 18 18 30.1]
+    wrench_limit: [40.0, 40.0, 55.0, 15.0, 15.0, 25.0]
+    gains:
+      x:     {kp: 66.4,  ki: 17.7, kd: 43.0, i_limit: 25.0, out_limit: 40.0}
+      y:     {kp: 66.4,  ki: 17.7, kd: 43.0, i_limit: 25.0, out_limit: 40.0}
+      z:     {kp: 103.8, ki: 34.6, kd: 23.8, i_limit: 30.0, out_limit: 55.0}
+      roll:  {kp: 8.0,   ki: 0.5,  kd: 2.0,  i_limit: 3.0,  out_limit: 15.0}
+      pitch: {kp: 8.0,   ki: 0.5,  kd: 2.0,  i_limit: 3.0,  out_limit: 15.0}
+      yaw:   {kp: 16.4,  ki: 6.6,  kd: 4.7,  i_limit: 8.0,  out_limit: 25.0}
+
+/**/thruster_allocator:
+  ros__parameters:
+    rate_hz: 50.0
+    input_timeout: 0.5                # s, stale input -> zero thrust

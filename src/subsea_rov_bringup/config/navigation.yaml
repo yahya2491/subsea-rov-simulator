@@ -1,0 +1,19 @@
+/**/navigation:
+  ros__parameters:
+    ahrs:
+      kp_acc: 0.5                     # rad/s per unit tilt error (~2 s time constant)
+      kp_mag: 0.5                     # rad/s per unit heading error
+      ki: 0.02                        # gyro bias estimation gain
+      acc_gate: 0.3                   # m/s^2, ignore accel when |f| - g exceeds this
+      mag_timeout: 0.2                # s
+      dvl_accel_time_constant: 0.3    # s, low-pass on DVL-derived acceleration
+    kf:
+      accel_noise: 0.1                # m/s^2, process noise (IMU noise + bias + model)
+      use_imu_acceleration: true
+      dvl_velocity_std_floor: 0.005   # m/s
+      depth_std_floor: 0.005          # m
+      initial_velocity_std: 0.3       # m/s
+      max_consecutive_usbl_rejects: 5
+    publish_rate: 50.0                # Hz
+    publish_tf: true
+    orientation_std: 0.01             # rad, reported orientation 1-sigma

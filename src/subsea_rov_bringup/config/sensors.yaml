@@ -1,0 +1,31 @@
+# Sensor models that run on the ROS side. The IMU, magnetometer and DVL are
+# Gazebo sensors; their noise is configured in models/dummy_rov/model.sdf.
+
+/**/pressure_sensor:
+  ros__parameters:
+    rate: 25.0                        # Hz, every 2nd ground-truth sample (50 Hz)
+    noise_std: 50.0                   # Pa, about 5 mm of water
+    offset: 0.0                       # Pa, constant calibration error
+
+/**/usbl:
+  ros__parameters:
+    # Transceiver 0.5 m below the surface, directly above the work site
+    transceiver_position: [0.0, 0.0, 9.5]
+    ping_interval: 1.0                # s
+    range_std: 0.03                   # m
+    range_std_per_m: 0.002            # m of range noise per m of slant range
+    angle_std_deg: 0.5                # deg, bearing and elevation
+    sound_speed: 1500.0               # m/s
+    processing_delay: 0.15            # s, added to acoustic travel time
+    max_range: 150.0                  # m
+    dropout_probability: 0.05
+    outlier_probability: 0.02         # multipath outliers
+    outlier_std: 1.5                  # m
+
+/**/dvl_bridge:
+  ros__parameters:
+    gz_topic: /model/dummy_rov/dvl/velocity
+    frame_id: dvl
+    min_locked_beams: 3               # need 3 of 4 beams for a 3-D velocity
+    velocity_std_floor: 0.005         # m/s, added to the reported covariance
+    beam_tilt_deg: 25.0               # must match the SDF beam <tilt>
